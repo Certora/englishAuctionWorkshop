@@ -276,10 +276,11 @@ rule integrityOfWithdraw(env e)
 
     withdraw@withrevert(e);
 
+    bool reverted = lastReverted;
     mathint balanceAfter = Token.balanceOf(e.msg.sender);
 
-    assert e.msg.sender == currentHighestBidder => lastReverted;
-    assert !lastReverted => bids(e.msg.sender) == 0
+    assert e.msg.sender == currentHighestBidder => reverted;
+    assert !reverted => bids(e.msg.sender) == 0
                     && balanceAfter == balanceBefore + bidBefore;
 }
 
