@@ -50,29 +50,29 @@ methods {
 -----------------------------------------------*/
 
 
-/****************************** 
+/******************************
 *           Unit Test         *
 ******************************/
 
 
 /* Property: Integrity of end() time
-   
+
    Description: Impossible to end earlier (version 1 - end() could be successfully executed only if assert is true)
 
-   This is an example of a simple unit test: for all states, for all block.timestamp 
+   This is an example of a simple unit test: for all states, for all block.timestamp
    if end() succeeded then block.timestamp must be at least endAt()
-   Note that as default only non reverting paths are reasoned 
+   Note that as default only non reverting paths are reasoned
 
 */
 rule integrityOfEndTime(env e) {
     end(e);
 
-    assert e.block.timestamp >= endAt(), "ended before endAt"; 
+    assert e.block.timestamp >= endAt(), "ended before endAt";
 }
 
 
 /* Property: Integrity of end() time
-   
+
    Description: Impossible to end earlier (version 2 - end() should revert under required condition)
 
    Same property as above but implemented with taking into account reverting path and reasoning about the case of lastReverted
@@ -89,48 +89,48 @@ rule impossibleToEndEarlier(env e, method f) {
 
 
 
-/****************************** 
+/******************************
 *       Variable Transition   *
 ******************************/
 
-/* 
-   Property: Monotonicity of highest bid 
+/*
+   Property: Monotonicity of highest bid
    Description: highestBid can't decrease (if we consider only bid functions, can use >)
 
    Implemented as a parametric rule, a rule that is verified on all external\public functions of the contract
 */
 rule monotonicityOfHighestBid(method f) {
     uint before = highestBid();
-    
+
     env e;
-    calldataarg args; 
+    calldataarg args;
     f(e, args);
 
     assert highestBid() >= before;
 }
 
 
-/****************************** 
+/******************************
 *       State Transition      *
 ******************************/
 
 
 /* Property: Once ended Always ended
-   
-   Description: If the auction is at ended state it stays ended after every possible transaction 
+
+   Description: If the auction is at ended state it stays ended after every possible transaction
 
    Implemented with an implication which can be written as:
 
    if (before) {
       assert (ended());
    }
-   else 
-      assert (True);  <---- always hold 
+   else
+      assert (True);  <---- always hold
 
 */
 rule onceEndedAlwaysEnded(method f) {
     env e;
-    calldataarg args; 
+    calldataarg args;
 
     bool before = ended();
     f(e, args);
@@ -139,39 +139,39 @@ rule onceEndedAlwaysEnded(method f) {
 
 
 
-/****************************** 
+/******************************
 *        Valid State          *
 ******************************/
 
 /* Property: Others bids are less than the highestBid
-   
-   Implemented as an invariant - an expression that must hold on all states. 
-   
-   NOTE: This is failing, let's understand why and fix the rule 
+
+   Implemented as an invariant - an expression that must hold on all states.
+
+   NOTE: This is failing, let's understand why and fix the rule
 
 */
-invariant integrityOfHighestBidStep(address other) 
-     other != highestBidder()  => bids(other) < highestBid() 
+invariant integrityOfHighestBidStep(address other)
+     other != highestBidder()  => bids(other) < highestBid();
 
 
 
-/****************************** 
+/******************************
 *       High Level            *
 ******************************/
 
 
 
-/****************************** 
+/******************************
 *       Risk Assessment       *
 ******************************/
 
 /* Property: changeToNFTOwner
-   
+
    Description: NFT Owner does not change except on end() and start()
 
    Here there is a call to the NFT contract. Also note the use of f.selector to reference a specific function
 
-   This property can be strengthened 
+   This property can be strengthened
 */
 rule changeToNFTOwner(env e, method f) {
     address nftOwnerBefore = NFT.ownerOf(nftId()); /* reference to another contract */
@@ -198,14 +198,14 @@ rule changeToNFTOwner(env e, method f) {
 ghost mathint sumBids {
     init_state axiom sumBids == 0 ;
 }
-    
+
 /* whenever bids[user] is updated to newValue where previously it held oldValue
    update sumBind */
 hook Sstore bids[KEY address user] uint256 newValue (uint256 oldValue) STORAGE {
     sumBids = sumBids + newValue - oldValue;
 }
 
-// simple rule that uses the ghost and filters 
+// simple rule that uses the ghost and filters
 
 rule justUseGhost(method f) {
     mathint before = sumBids;
