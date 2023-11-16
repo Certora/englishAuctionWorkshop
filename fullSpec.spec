@@ -2,13 +2,13 @@
    This is a specification file for EnglishAuction's formal verification
    using the Certora prover.
  */
- 
- 
- import "erc20.spec"
 
-// Reference from the spec to additional contracts used in the verification 
-using DummyERC721A as NFT
-using DummyERC20A as Token
+
+ import "erc20.spec";
+
+// Reference from the spec to additional contracts used in the verification
+using DummyERC721A as NFT;
+using DummyERC20A as Token;
 
 
 /*
@@ -19,29 +19,29 @@ using DummyERC20A as Token
 
 
 methods {
-    // auction getters 
-    seller() returns (address)                                              envfree
-    nftId() returns (uint)                                                  envfree
-    nft() returns(address)                                                  envfree
-    endAt() returns (uint256)                                               envfree
-    started() returns (bool)                                                envfree
-    ended() returns (bool)                                                  envfree
-    highestBidder() returns (address)                                       envfree
-    highestBid() returns (uint256)                                          envfree
-    bids(address) returns (uint256)                                         envfree
-    operators(address, address) returns (bool)                              envfree
+    // auction getters
+    function seller() external returns (address)                                              envfree;
+    function nftId() external returns (uint)                                                  envfree;
+    function nft() external returns(address)                                                  envfree;
+    function endAt() external returns (uint256)                                               envfree;
+    function started() external returns (bool)                                                envfree;
+    function ended() external returns (bool)                                                  envfree;
+    function highestBidder() external returns (address)                                       envfree;
+    function highestBid() external returns (uint256)                                          envfree;
+    function bids(address) external returns (uint256)                                         envfree;
+    function operators(address, address) external returns (bool)                              envfree;
 
 
     // erc721
-    safeTransferFrom(address, address, uint256)                             => DISPATCHER(true)
-    NFT.balanceOf(address) returns (uint256)                                envfree
-    NFT.ownerOf(uint256) returns (address)                                  envfree
-    /* NONDET implies that the function is treated as a non state changing 
-       function that returns arbitrary value */ 
-    onERC721Received( address,address,uint256,bytes) returns (address)      => NONDET
+    function _.safeTransferFrom(address, address, uint256) external => DISPATCHER(true);
+    function NFT.balanceOf(address) external returns (uint256) envfree;
+    function NFT.ownerOf(uint256) external returns (address) envfree;
+    /* NONDET implies that the function is treated as a non state changing;
+       function that returns arbitrary value */
+    function _.onERC721Received( address,address,uint256,bytes) external => NONDET;
 
     //erc20
-    Token.balanceOf(address)                                                envfree
+    function Token.balanceOf(address) external returns (uint256) envfree;
 }
 
 
@@ -55,7 +55,7 @@ methods {
 ghost mathint sumBids {
     init_state axiom sumBids == 0 ;
 }
-    
+
 /* whenever bids[user] is updated to newValue where previously it held oldValue
    update sumBind */
 hook Sstore bids[KEY address user] uint256 newValue (uint256 oldValue) STORAGE {
@@ -72,13 +72,13 @@ hook Sstore bids[KEY address user] uint256 newValue (uint256 oldValue) STORAGE {
 function withdrawHelper(env e, method f, address user) returns bool {
     bool isReverted;
 
-    if (f.selector == withdraw().selector){
+    if (f.selector == sig:withdraw().selector){
         require e.msg.sender == user;
         withdraw@withrevert(e);
         isReverted = lastReverted;
         return isReverted;
 
-    } else if (f.selector == withdrawAmount(address, uint).selector) {
+    } else if (f.selector == sig:withdrawAmount(address, uint).selector) {
         address recipient; uint amount;
         require e.msg.sender == user;
         withdrawAmount@withrevert(e, recipient, amount);
@@ -98,11 +98,11 @@ function withdrawHelper(env e, method f, address user) returns bool {
 function bidHelper(env e, method f) {
     uint256 amount;
 
-    if (f.selector == bid(uint).selector){
+    if (f.selector == sig:bid(uint).selector){
         require e.msg.sender != currentContract;
         bid(e, amount);
-        
-    } else if (f.selector == bidFor(address, uint).selector) {
+
+    } else if (f.selector == sig:bidFor(address, uint).selector) {
         address bidder;
         require bidder != currentContract;
         bidFor(e, bidder, amount);
@@ -115,9 +115,9 @@ function bidHelper(env e, method f) {
 
 
 function callBidFunction(method f, env e, uint amount, address bidder) returns bool {
-    if (f.selector == bid(uint).selector ) {
+    if (f.selector == sig:bid(uint).selector ) {
         bid@withrevert(e, amount);
-        return !lastReverted; 
+        return !lastReverted;
     }
     else {
         bidFor@withrevert(e, bidder, amount);
@@ -129,19 +129,19 @@ function callBidFunction(method f, env e, uint amount, address bidder) returns b
 function callFunctionHelper(env e, method f, address operator, address bidder) {
     uint256 amount;
 
-    if (f.selector == withdrawAmount(address, uint).selector) {
+    if (f.selector == sig:withdrawAmount(address, uint).selector) {
         require e.msg.sender == operator;
         withdrawAmount(e, bidder, amount);
-    } else if  (f.selector == withdrawFor(address, uint).selector ){
+    } else if  (f.selector == sig:withdrawFor(address, uint).selector ){
         require e.msg.sender == operator;
         withdrawFor(e, bidder, amount);
-    }    
-    else if (f.selector == bidFor(address, uint).selector) {
+    }
+    else if (f.selector == sig:bidFor(address, uint).selector) {
         require e.msg.sender == operator;
         bidFor(e, bidder, amount);
-    } 
-    else if (f.selector == end().selector) {
-        require bidder != highestBidder() && bidder != seller() 
+    }
+    else if (f.selector == sig:end().selector) {
+        require bidder != highestBidder() && bidder != seller()
                     && operator != highestBidder() && operator != seller();
         end(e);
     }
@@ -294,12 +294,12 @@ rule integrityOfAllWithdraws(env e, method f)
 
 
 // highestBidder cannot withdraw
-rule highestBidderFundsLocked(env e, method f) 
-    filtered { f -> 
-        f.selector == withdraw().selector 
-        || f.selector == withdrawAmount(address, uint).selector 
-        || f.selector == withdrawAmount(address, uint).selector 
-    } 
+rule highestBidderFundsLocked(env e, method f)
+    filtered { f ->
+        f.selector == sig:withdraw().selector
+        || f.selector == sig:withdrawAmount(address, uint).selector
+        || f.selector == sig:withdrawAmount(address, uint).selector
+    }
 {
     address user;
 
@@ -442,30 +442,30 @@ rule monotonicityOfHighestBid(method f) {
 // only balance of a specific user can change after a function call
 rule noChangeToOther(method f, address bidder) {
     env e;
-    calldataarg args; 
+    calldataarg args;
     uint256 amount; address bidderFor;
 
     uint beforeBid = bids(bidder);
 
-    if (f.selector == bidFor(address, uint).selector) {
+    if (f.selector == sig:bidFor(address, uint).selector) {
         bidFor(e, bidderFor, amount);
-    } 
+    }
     else {
         f(e, args);
     }
 
     uint afterBid = bids(bidder);
 
-    assert afterBid != beforeBid => (bidder == e.msg.sender 
-                                        || operators(bidder, e.msg.sender) == true 
+    assert afterBid != beforeBid => (bidder == e.msg.sender
+                                        || operators(bidder, e.msg.sender) == true
                                         || bidderFor == bidder);
-} 
+}
 
 
 // system should have at least the sum of all bids to be able to payback everybody
-invariant solvency() 
-    sumBids <= Token.balanceOf(currentContract) 
-    filtered { f -> f.selector != end().selector } 
+invariant solvency()
+    sumBids <= to_mathint(Token.balanceOf(currentContract))
+    filtered { f -> f.selector != sig:end().selector }
     {
         preserved with (env e) {
             require e.msg.sender != currentContract;
@@ -555,5 +555,5 @@ rule changeToNFTOwner(env e, method f) {
 
     address nftOwnerAfter = NFT.ownerOf(nftId());
 
-    assert nftOwnerAfter != nftOwnerBefore  => ( f.selector == end().selector || f.selector == start().selector );
+    assert nftOwnerAfter != nftOwnerBefore  => ( f.selector == sig:end().selector || f.selector == sig:start().selector );
 }
